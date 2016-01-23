@@ -3,7 +3,7 @@
 
   
 
-\setauthor[Tiana Razafindralambo]{Tiana Razafindralambo\\
+\setauthor[T. Razafindralambo]{Tiana Razafindralambo\\
 	\email{tiana.razafindralambo@eshard.com}}
 	
 \institute{}
@@ -89,17 +89,62 @@ Card applications code from a raw memory dump.
 \section{Related Work}
 \label{section:relatedwork}
 
+\subsection{Misuse of Frame Creation to Exploit Stack Underflow Attacks on Java Card} Recently we
+have published in \cite{cardis15} an underflow attack on the Java Card platform. This attack
+exploits the Java frame creation mechanism to perform an initial attack that could lead us to
+successfully dump a small part of the internal memory. This attack can be carried on, either, through
+an ill-formed applet, or by inducing a fault injection at runtime using for instance a laser beam \cite{Barbu:2011:JCO:2188509.2188535}, \cite{lancia1}, \cite{conf/cardis/BarbuTG10}, \cite{jic1}.
+An ill-formed applet can be defined as a benign applet that has been modified after compilation, in
+order to turn it into a malicious applet. Furthermore, the fault injection is usually used for 
+performing a so called fault attack, that aims at altering data at runtime.
+
+After some manual reverse engineering of the extracted raw binary data, we succeeded in finding RAM
+registers below the Java stack. We explain in the paper how to retrieve these registers. This helped us
+for further exploitations and allowed us to dump much more than the initial small dump. 
+
+Having a larger raw memory dump increases the difficulty of the reverse engineering step. From a platform to another one, there is no specific meta-data, or structure to rely on, for automatically retrieving the code. This is due to the specific implementation of each Java Card platform. Despite the fact that a trained eye is capable of distinguishing some specific details in the raw memory dump, the larger is the raw memory dump, harder is the exercise. 
+
+This paper is the result of my attempt in trying to automatically detect Java Card code
+within a given raw memory dump without using the IC computation to identify the code. Indeed as we will see in the section \ref{subsection:memforensics} the IC computation technique requires to gather a wide range of different Java Card applets, in order to get an IC value that would characterize at best the Java Card set of instructions.
+To overcome this step I propose a new approach for characterizing the code of a Java Card applet, and for identifying it within a raw memory dump.
+
 \subsection{Analysis of unknown Binary file}
 A common habit for analysing any ``unknown'' binary file is to identify the existing strings within
 it. Those strings may be valuable hints for identifying what is in the memory dump (e.g: a package
-name, com.mycompany.mypackage). In case of files recovery, there are plenty of file carving tools
+name, com.mycompany.mypackage). For instance the Fig. \ref{fig:bless2} depicts some strings that help in identifying: (1), (2) some meta-data related to a given installed applet, (3) the start of an array that is located in the Non-Volatile Memory area. 
+\begin{figure}[!h]
+\center
+    \includegraphics[scale=0.27]{Razafindralambo/img/bless2.eps}
+    \caption{Identification of meta-data and a sample of the Non-Volatile Memory area}
+    \label{fig:bless2}
+\end{figure}
+In case of files recovery, there are plenty of file carving tools
 \footnote{list of file carving tools: http://forensicswiki.org/wiki/Tools:Data\_Recovery}. The most
 known are probably \textit{volatility}, \textit{foremost}, \textit{photorec}.  Most file carvers
 operate by simply ``carving out'' blocks after looking for file headers and/or footers. The majority
-of file carving programs will only recover files that are not fragmented. In practice, while
-analysing Java Card raw memory dump, one should bear in mind that the output is platform dependent.
-This means that objects, or code structures, or simply, memory layouts, highly depends on how the
-Java Card platform handle them. 
+of file carving programs will only recover files that are not fragmented. 
+
+In practice, while analysing Java Card raw memory dump, one should bear in mind
+that the output is platform dependent.  This means that objects, or code
+structures, or simply, memory layouts, highly depends on how the Java Card
+platform handle them. Therefore, there is no specific structure, or meta-data,
+one may always rely on, for automatically identifying the start or the end of the
+code. In the example depicted by the Fig. \ref{fig:bless1} one can identify a magic number ($0xDECAFFED$) that identifies the Java Card CAP file format. While in this case it is obvious to determine the start of the applet, this case cannot be generalized on other platforms. However, a trained eye is relatively capable of quickly identifying some
+specific details. For instance, a method always ends with a $return$
+instruction according to the value to be returned: $return$ (0x7A, return
+void), $sreturn$ (0x79, return a short), $areturn$ (0x77, return a reference).
+If we still take the same example depicted by the Fig. \ref{fig:bless1}, if one highlights the byte
+value $0x7A$ ($return$ instruction), it is possible to distinguish the area where the latter is the
+most concentrated.  
+
+\begin{figure}[!h]
+\center
+    \includegraphics[scale=0.24]{Razafindralambo/img/bless1.eps}
+    \caption{Identification of return instructions within a Java Card raw memory dump}
+    \label{fig:bless1}
+\end{figure}
+
+In this particular example, the methods do not contain that much instructions. Consequently it is relatively easy to highlight the area where the code is located. The larger is the size of the raw memory dump and the different methods, harder is such kind of reverse engineering exercise. Therefore, one must find an automatic way for handling a large raw memory dump, and for distinguishing the code from data. 
 %\subsection{Attacks on Java Card Platforms for Dumping the Memory}
 %\label{subsection:attacks}
 %Several attacks that involve getting read access to some part of smart card's memory have already
@@ -115,22 +160,6 @@ Java Card platform handle them.
 %\cite{barbu1}
 %\cite{heaphop}
 %\cite{BouffardForensic}
-\subsection{Misuse of Frame Creation to Exploit Stack Underflow Attacks on Java Card} Recently we
-have published in \cite{cardis15} an underflow attack on the Java Card platform. This attack
-exploits the Java frame creation mechanism to perform an initial attack that could lead us to
-successfully dump a small part of the internal memory. This attack can be carried on, either, through
-an ill-formed applet, or by inducing a fault injection at runtime using for instance a laser beam.
-An ill-formed applet can be defined as a benign applet that has been modified after compilation, in
-order to turn it into a malicious applet. Furthermore, the fault injection is usually used for 
-performing a so called fault attack, that aims at altering data at runtime.
-
-After some manual reverse engineering of the extracted raw binary data, we succeeded in finding RAM
-registers below the Java stack. We explain in the paper how to retrieve these registers. This helped us
-for further exploitations and allowed us to dump much more than the initial small dump. 
-
-This paper is the result of my attempt in trying to automatically detect Java Card code
-within a given raw memory dump.
-
 \subsection{Memory Forensics of a Java Card Dump}
 \label{subsection:memforensics}
 Bouffard \textit{et al.} described in \cite{conf/cardis/LanetBLCMMF14} a technique that
@@ -598,15 +627,9 @@ code than data. As I have now some statistical tools to rely on, I can use them 
 code within a given memory dump, and extract the code.
 
 
-\subsection{The Running Correlation Coefficient Computation (RCC)}
-The idea of a running correlation coefficient between two samples A and B, is to loop through A, then
-at each step, take a section from A and correlate it with B. The size of the section to be analysed
-from A is defined by a window' size.   
-
-I computed a running correlation coefficient of my memory dump and the Method Component of
-JavaCardApp1. The window's size has been empirically chosen and is defined to
-128 bytes. The result is depicted by the figure Fig. \ref{fig:runncorrcoeff}.
-
+\subsection{The Running Correlation Coefficient Computation Trace (RCCT)}
+The idea is to compare two sets of data, namely, two sets of byte distributions. The first one comes from a reference Java Card applet. Let us note this reference set as $S$. The second set of byte distributions comes from a raw memory dump. While the memory dump is parsed a window of size $w$, is defined for analysing a single sample from the raw memory dump. Let $S_i$ be a given sample where $i$ identifies the sample among other ones. $i$ varies from $0$ to $W/w$, where $W$ is the size of the raw memory dump. While this window is moved from the start of the raw memory dump to its end, every $S_i$ is compared to $S$ using a statistical tool noted ($ST$). The outcome from this computation is a correlation coefficient value $c_i$, that defines how likely $S_i$ is similar to $S$. A set of $c_i$ values will result in a correlation coefficient trace.
+For instance, the Fig. \ref{fig:runncorrcoeff} depicts a trace that has been computed while computing $ST(S_i, S)$ all along a raw memory dump, where $w$ has been chosen empirically ($=128$) and $W = 4KB$. 
 %TIANA
 %./PythonScripts/scan.py tst.bin tst.onlyfunc.bin 42 tst_63x42.png >| spearman_tst.bin_vs_tst.onlyfunc.bin && ./ShellScripts/corrplot.sh spearman_tst.bin_vs_tst.onlyfunc.bin spearman_tst.bin_vs_tst.onlyfunc.bin && feh spearman_tst.bin_vs_tst.onlyfunc.bin.png
 \begin{figure}[!h]
@@ -616,24 +639,22 @@ JavaCardApp1. The window's size has been empirically chosen and is defined to
     \label{fig:runncorrcoeff}
 \end{figure}
 
-As we can notice, the correlation coefficient does not even reach 1. Therefore the chosen window' size
-is not that reliable. Further analysis can reveal which range of window' size can be chosen so the
-correlation coefficient is the nearest possible of 1. This analysis is depicted by the figure
-\ref{fig:testwindowsize} and the result can show that with a proper window' size it is possible to
-enhance the area of interest identification. 
+As we can notice, the correlation coefficient does not even reach 1. This is normal because we do not compare exactly the same thing. However, there is an area between the offsets 470 and $\approx$ 1100, where the correlation coefficient is higher than 0.5. This gives the information that between those offsets, there is a set of bytes that have a distribution that approximate the distribution of the bytes that one can find within the Method Component of the reference Applet that has been chosen for the experiment. Further analysis can reveal which range of window' size can be chosen so the
+correlation coefficient is the nearest possible of 1. The Fig. \ref{fig:testwindowsize} depicts a trace where each point represents the number of correlation coefficient that is over 0.9 according to a given window size (absciss).This enables to highlight the range of window size values that can be used for getting the highest correlation coefficient values possible.
 
 %TIANA: produit par ShellScript/corrplot.sh
 \begin{figure}[!h]
     \center
-    \includegraphics[scale=0.58]{Razafindralambo/img/testwindowsize.png}
+    \includegraphics[scale=0.58]{Razafindralambo/img/testwindowsize.eps}
     \caption{Number of Correlation Coefficient greater or equal to 0.9 according to
-    the window' size over 2653 points/bytes}
+    the window' size over 2653 bytes}
     \label{fig:testwindowsize}
 \end{figure} 
 
-As we can notice in Fig. \ref{fig:window700}, the correlation coefficient value is quite high between 600 and 800 (window'
-size). Hence, if one recomputes the Correlation trace, one can notice that the area of interest can
-be refined.
+Indeed, 
+as one can notice in Fig. \ref{fig:testwindowsize}, the correlation coefficient value is quite high between the offsets 600 and 800 (window'
+size). Hence, if one recomputes the correlation trace, one can notice that the area of interest can
+be refined (Fig. \ref{fig:window700}).
 
 %TIANA: produit par ShellScript/corrplot.sh
 %/PythonScripts/scan.py tst.bin tst.onlyfunc.bin 42 tst_63x42.png > a.txt
@@ -641,7 +662,7 @@ be refined.
 %a.txt.png ~/Thesis/Javacard_forensics/rcc_window700.png 
 \begin{figure}[!h]
     \center
-    \includegraphics[scale=0.58]{Razafindralambo/img/rcc_window700.png}
+    \includegraphics[scale=0.58]{Razafindralambo/img/rcc_window700.eps}
     \caption{Correlation Coefficient computation with a window' size equals to 700}
     \label{fig:window700}
 \end{figure}
@@ -652,16 +673,16 @@ be refined.
 %problem is that the result of the Running Correlation Coefficient computation is highly dependent to
 %the size of the window that has been chosen.
 
-%In order to have the best RCC trace, one should perform a learning phase. During the latter one
-%should compute the RCC several time with different window' size. 
+%In order to have the best RCCT trace, one should perform a learning phase. During the latter one
+%should compute the RCCT several time with different window' size. 
 
 %The trace that has the highest correlation coefficient values is likely the best one to use as a
 %reference to extract the corresponding area in the memory dump.
 
 \subsection{Data Extraction}
-A RCC trace can be used for defining the area of interest to extract. A min/max threshold can be
+A RCCT trace can be used for defining the area of interest to extract. A min/max threshold can be
 then used to accomplish that job.
-However, I decided to check visually what looks like a RCC trace while it is plotted as an image instead of
+However, I decided to check visually what looks like a RCCT trace while it is plotted as an image instead of
 a graph. This would give another way to visually appreciate the variations.
 
 To do so, I defined the color of a pixel as being the absolute value of the correlation coefficient
@@ -708,7 +729,7 @@ The result is the figure Fig. \ref{fig:mask1}.
 \end{figure}
 
 Last but not least, I just overlap my brand new mask over the memory dump and I only extract
-pixels/bytes that actually overlap pixels that correspond to the white color. All the
+pixels that actually overlap pixels that correspond to the white color. All the
 transformations are summarized by the figure Fig. \ref{fig:extract1}.
 
 \begin{figure}[!h]
